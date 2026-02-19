@@ -1,0 +1,69 @@
+import type { ToolHandler } from "../types.js";
+
+// Gmail handlers
+import {
+  searchEmails,
+  readEmail,
+  sendEmail,
+  draftEmail,
+  modifyEmail,
+  deleteEmail,
+  listEmailLabels,
+  batchModifyEmails,
+  batchDeleteEmails,
+  downloadAttachment,
+  createLabel,
+  updateLabel,
+  deleteLabel,
+  getOrCreateLabel,
+  createFilter,
+  listFilters,
+  getFilter,
+  deleteFilter,
+  createFilterFromTemplate,
+} from "../handlers/gmail.js";
+
+// Calendar handlers
+import {
+  listCalendars,
+  listEvents,
+  getEvent,
+  createEvent,
+  updateEvent,
+  deleteEvent,
+  findFreeTime,
+  checkConflicts,
+} from "../handlers/calendar.js";
+
+export const toolHandlers: Record<string, ToolHandler> = {
+  // Gmail
+  search_emails: searchEmails,
+  read_email: readEmail,
+  send_email: sendEmail,
+  draft_email: draftEmail,
+  modify_email: modifyEmail,
+  delete_email: deleteEmail,
+  list_email_labels: listEmailLabels,
+  batch_modify_emails: batchModifyEmails,
+  batch_delete_emails: batchDeleteEmails,
+  download_attachment: downloadAttachment,
+  create_label: createLabel,
+  update_label: updateLabel,
+  delete_label: deleteLabel,
+  get_or_create_label: getOrCreateLabel,
+  create_filter: createFilter,
+  list_filters: listFilters,
+  get_filter: getFilter,
+  delete_filter: deleteFilter,
+  create_filter_from_template: createFilterFromTemplate,
+
+  // Calendar
+  list_calendars: listCalendars,
+  list_events: listEvents,
+  get_event: getEvent,
+  create_event: createEvent,
+  update_event: updateEvent,
+  delete_event: deleteEvent,
+  find_free_time: findFreeTime,
+  check_conflicts: checkConflicts,
+};
