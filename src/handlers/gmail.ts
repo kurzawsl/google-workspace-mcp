@@ -100,7 +100,7 @@ export const readEmail: ToolHandler = async (ctx, args) => {
 
 export const sendEmail: ToolHandler = async (ctx, args) => {
   try {
-    const raw = buildRawMessage(args);
+    const raw = await buildRawMessage(args);
 
     const params: Record<string, unknown> = {
       userId: GMAIL_USER,
@@ -125,7 +125,7 @@ export const sendEmail: ToolHandler = async (ctx, args) => {
 
 export const draftEmail: ToolHandler = async (ctx, args) => {
   try {
-    const raw = buildRawMessage(args);
+    const raw = await buildRawMessage(args);
 
     const requestBody: Record<string, unknown> = {
       message: { raw },
@@ -395,7 +395,40 @@ function extractAttachments(payload: any, result: any[] = []): any[] {
   return result;
 }
 
-function buildRawMessage(args: Record<string, unknown>): string {
+// Maps common file extensions to MIME types for attachments
+const MIME_TYPES: Record<string, string> = {
+  ".pdf": "application/pdf",
+  ".doc": "application/msword",
+  ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ".xls": "application/vnd.ms-excel",
+  ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  ".ppt": "application/vnd.ms-powerpoint",
+  ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".svg": "image/svg+xml",
+  ".webp": "image/webp",
+  ".zip": "application/zip",
+  ".gz": "application/gzip",
+  ".tar": "application/x-tar",
+  ".csv": "text/csv",
+  ".txt": "text/plain",
+  ".html": "text/html",
+  ".json": "application/json",
+  ".xml": "application/xml",
+  ".mp3": "audio/mpeg",
+  ".mp4": "video/mp4",
+  ".wav": "audio/wav",
+};
+
+function getMimeType(filePath: string): string {
+  const ext = path.extname(filePath).toLowerCase();
+  return MIME_TYPES[ext] || "application/octet-stream";
+}
+
+async function buildRawMessage(args: Record<string, unknown>): Promise<string> {
   const to = (args.to as string[]).join(", ");
   const subject = args.subject as string;
   const body = args.body as string;
@@ -404,10 +437,12 @@ function buildRawMessage(args: Record<string, unknown>): string {
   const htmlBody = args.htmlBody as string | undefined;
   const mimeType = (args.mimeType as string) || "text/plain";
   const inReplyTo = args.inReplyTo as string | undefined;
+  const attachmentPaths = args.attachments as string[] | undefined;
 
   const headers: string[] = [
     `To: ${to}`,
     `Subject: ${encodeRFC2047(subject)}`,
+    "MIME-Version: 1.0",
   ];
 
   if (cc?.length) headers.push(`Cc: ${cc.join(", ")}`);
@@ -417,31 +452,72 @@ function buildRawMessage(args: Record<string, unknown>): string {
     headers.push(`References: ${inReplyTo}`);
   }
 
+  // Build the text body part
+  let bodyPart: string;
   if (mimeType === "multipart/alternative" && htmlBody) {
-    const boundary = `boundary_${Date.now()}`;
-    headers.push("MIME-Version: 1.0");
-    headers.push(`Content-Type: multipart/alternative; boundary="${boundary}"`);
-
-    const parts = [
-      `--${boundary}`,
+    const altBoundary = `alt_boundary_${Date.now()}`;
+    bodyPart = [
+      `Content-Type: multipart/alternative; boundary="${altBoundary}"`,
+      "",
+      `--${altBoundary}`,
       "Content-Type: text/plain; charset=UTF-8",
       "",
       body,
-      `--${boundary}`,
+      `--${altBoundary}`,
       "Content-Type: text/html; charset=UTF-8",
       "",
       htmlBody,
-      `--${boundary}--`,
-    ];
+      `--${altBoundary}--`,
+    ].join("\r\n");
+  } else {
+    const contentType = mimeType === "text/html" ? "text/html" : "text/plain";
+    const content = htmlBody && mimeType === "text/html" ? htmlBody : body;
+    bodyPart = [
+      `Content-Type: ${contentType}; charset=UTF-8`,
+      "",
+      content,
+    ].join("\r\n");
+  }
 
-    const raw = headers.join("\r\n") + "\r\n\r\n" + parts.join("\r\n");
+  // If no attachments, send simple message
+  if (!attachmentPaths?.length) {
+    const raw = headers.join("\r\n") + "\r\n" + bodyPart;
     return Buffer.from(raw).toString("base64url");
   }
 
-  const contentType = mimeType === "text/html" ? "text/html" : "text/plain";
-  headers.push(`Content-Type: ${contentType}; charset=UTF-8`);
+  // With attachments: wrap everything in multipart/mixed
+  const mixedBoundary = `mixed_boundary_${Date.now()}`;
+  headers.push(`Content-Type: multipart/mixed; boundary="${mixedBoundary}"`);
 
-  const raw = headers.join("\r\n") + "\r\n\r\n" + (htmlBody && mimeType === "text/html" ? htmlBody : body);
+  const parts: string[] = [
+    headers.join("\r\n"),
+    "",
+    `--${mixedBoundary}`,
+    bodyPart,
+  ];
+
+  // Read and encode each attachment
+  for (const filePath of attachmentPaths) {
+    const resolvedPath = path.resolve(filePath);
+    const fileData = await fs.readFile(resolvedPath);
+    const base64Data = fileData.toString("base64");
+    const filename = path.basename(resolvedPath);
+    const fileMimeType = getMimeType(resolvedPath);
+
+    parts.push(
+      `--${mixedBoundary}`,
+      `Content-Type: ${fileMimeType}; name="${encodeRFC2047(filename)}"`,
+      `Content-Disposition: attachment; filename="${encodeRFC2047(filename)}"`,
+      "Content-Transfer-Encoding: base64",
+      "",
+      // Split base64 into 76-char lines per RFC 2045
+      base64Data.replace(/(.{76})/g, "$1\r\n"),
+    );
+  }
+
+  parts.push(`--${mixedBoundary}--`);
+
+  const raw = parts.join("\r\n");
   return Buffer.from(raw).toString("base64url");
 }
 
