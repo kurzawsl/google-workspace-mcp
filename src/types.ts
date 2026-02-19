@@ -55,9 +55,6 @@ export interface ModifyEmailArgs {
   labelIds?: string[];
 }
 
-export interface DeleteEmailArgs {
-  messageId: string;
-}
 
 export interface DownloadAttachmentArgs {
   messageId: string;
@@ -73,10 +70,6 @@ export interface BatchModifyEmailsArgs {
   batchSize?: number;
 }
 
-export interface BatchDeleteEmailsArgs {
-  messageIds: string[];
-  batchSize?: number;
-}
 
 export interface LabelArgs {
   name: string;
@@ -101,39 +94,6 @@ export interface GetOrCreateLabelArgs {
   messageListVisibility?: "show" | "hide";
 }
 
-export interface CreateFilterArgs {
-  criteria: {
-    from?: string;
-    to?: string;
-    subject?: string;
-    query?: string;
-    negatedQuery?: string;
-    hasAttachment?: boolean;
-    excludeChats?: boolean;
-    size?: number;
-    sizeComparison?: "unspecified" | "smaller" | "larger";
-  };
-  action: {
-    addLabelIds?: string[];
-    removeLabelIds?: string[];
-    forward?: string;
-  };
-}
-
-export interface FilterTemplateArgs {
-  template: "fromSender" | "withSubject" | "withAttachments" | "largeEmails" | "containingText" | "mailingList";
-  parameters: {
-    senderEmail?: string;
-    subjectText?: string;
-    searchText?: string;
-    listIdentifier?: string;
-    sizeInBytes?: number;
-    labelIds?: string[];
-    archive?: boolean;
-    markAsRead?: boolean;
-    markImportant?: boolean;
-  };
-}
 
 // Calendar types
 export interface ListEventsArgs {

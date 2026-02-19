@@ -2,7 +2,7 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import * as os from "os";
 import type { GoogleWorkspaceContext, ToolHandler } from "../types.js";
-import { formatSuccess, formatError } from "../core/response-formatter.js";
+import { formatSuccess } from "../core/response-formatter.js";
 import { wrapGoogleError, invalidParams } from "../core/errors.js";
 
 const GMAIL_USER = "me";
@@ -172,19 +172,6 @@ export const modifyEmail: ToolHandler = async (ctx, args) => {
   }
 };
 
-export const deleteEmail: ToolHandler = async (ctx, args) => {
-  try {
-    const messageId = args.messageId as string;
-    await ctx.gmail.users.messages.delete({
-      userId: GMAIL_USER,
-      id: messageId,
-    });
-    return formatSuccess({ deleted: true, messageId });
-  } catch (error) {
-    throw wrapGoogleError(error, "delete_email");
-  }
-};
-
 export const listEmailLabels: ToolHandler = async (ctx) => {
   try {
     const response = await ctx.gmail.users.labels.list({ userId: "me" });
@@ -221,32 +208,6 @@ export const batchModifyEmails: ToolHandler = async (ctx, args) => {
     return formatSuccess({ totalProcessed: messageIds.length, batches: results });
   } catch (error) {
     throw wrapGoogleError(error, "batch_modify_emails");
-  }
-};
-
-export const batchDeleteEmails: ToolHandler = async (ctx, args) => {
-  try {
-    const messageIds = args.messageIds as string[];
-    const batchSize = (args.batchSize as number) || 50;
-    const results: Array<{ batch: number; count: number; status: string }> = [];
-
-    for (let i = 0; i < messageIds.length; i += batchSize) {
-      const batch = messageIds.slice(i, i + batchSize);
-      await ctx.gmail.users.messages.batchDelete({
-        userId: GMAIL_USER,
-        requestBody: { ids: batch },
-      });
-
-      results.push({
-        batch: Math.floor(i / batchSize) + 1,
-        count: batch.length,
-        status: "success",
-      });
-    }
-
-    return formatSuccess({ totalDeleted: messageIds.length, batches: results });
-  } catch (error) {
-    throw wrapGoogleError(error, "batch_delete_emails");
   }
 };
 
@@ -360,22 +321,7 @@ export const getOrCreateLabel: ToolHandler = async (ctx, args) => {
   }
 };
 
-// --- Filter Operations ---
-
-export const createFilter: ToolHandler = async (ctx, args) => {
-  try {
-    const response = await ctx.gmail.users.settings.filters.create({
-      userId: GMAIL_USER,
-      requestBody: {
-        criteria: args.criteria as any,
-        action: args.action as any,
-      },
-    });
-    return formatSuccess(response.data);
-  } catch (error) {
-    throw wrapGoogleError(error, "create_filter");
-  }
-};
+// --- Filter Operations (read-only) ---
 
 export const listFilters: ToolHandler = async (ctx) => {
   try {
@@ -396,71 +342,6 @@ export const getFilter: ToolHandler = async (ctx, args) => {
     return formatSuccess(response.data);
   } catch (error) {
     throw wrapGoogleError(error, "get_filter");
-  }
-};
-
-export const deleteFilter: ToolHandler = async (ctx, args) => {
-  try {
-    const filterId = args.filterId as string;
-    await ctx.gmail.users.settings.filters.delete({
-      userId: GMAIL_USER,
-      id: filterId,
-    });
-    return formatSuccess({ deleted: true, filterId });
-  } catch (error) {
-    throw wrapGoogleError(error, "delete_filter");
-  }
-};
-
-export const createFilterFromTemplate: ToolHandler = async (ctx, args) => {
-  try {
-    const template = args.template as string;
-    const params = args.parameters as Record<string, unknown>;
-
-    const criteria: Record<string, unknown> = {};
-    const action: Record<string, unknown> = {};
-
-    switch (template) {
-      case "fromSender":
-        criteria.from = params.senderEmail;
-        break;
-      case "withSubject":
-        criteria.subject = params.subjectText;
-        break;
-      case "withAttachments":
-        criteria.hasAttachment = true;
-        break;
-      case "largeEmails":
-        criteria.size = params.sizeInBytes || 5242880;
-        criteria.sizeComparison = "larger";
-        break;
-      case "containingText":
-        criteria.query = params.searchText;
-        break;
-      case "mailingList":
-        criteria.query = `list:${params.listIdentifier}`;
-        break;
-      default:
-        return formatError(`Unknown template: ${template}`);
-    }
-
-    if (params.labelIds) action.addLabelIds = params.labelIds;
-    if (params.archive) {
-      if (!action.removeLabelIds) action.removeLabelIds = [];
-      (action.removeLabelIds as string[]).push("INBOX");
-    }
-    if (params.markAsRead) {
-      if (!action.removeLabelIds) action.removeLabelIds = [];
-      (action.removeLabelIds as string[]).push("UNREAD");
-    }
-
-    const response = await ctx.gmail.users.settings.filters.create({
-      userId: GMAIL_USER,
-      requestBody: { criteria, action } as any,
-    });
-    return formatSuccess(response.data);
-  } catch (error) {
-    throw wrapGoogleError(error, "create_filter_from_template");
   }
 };
 
