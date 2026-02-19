@@ -6,6 +6,7 @@ const REQUIRED_FIELDS: Record<string, string[]> = {
   draft_email: ["to", "subject", "body"],
   modify_email: ["messageId"],
   download_attachment: ["messageId", "attachmentId"],
+  read_attachment_text: ["messageId", "attachmentId"],
   batch_modify_emails: ["messageIds"],
   create_label: ["name"],
   update_label: ["id"],

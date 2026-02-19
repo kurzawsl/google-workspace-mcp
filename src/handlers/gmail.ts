@@ -248,6 +248,57 @@ export const downloadAttachment: ToolHandler = async (ctx, args) => {
   }
 };
 
+export const readAttachmentText: ToolHandler = async (ctx, args) => {
+  try {
+    const messageId = args.messageId as string;
+    const attachmentId = args.attachmentId as string;
+    const mimeType = (args.mimeType as string) || "";
+    const filename = (args.filename as string) || "attachment";
+
+    const attachment = await ctx.gmail.users.messages.attachments.get({
+      userId: GMAIL_USER,
+      messageId,
+      id: attachmentId,
+    });
+
+    const data = Buffer.from(attachment.data.data!, "base64");
+
+    // PDF extraction
+    if (mimeType === "application/pdf" || filename.toLowerCase().endsWith(".pdf")) {
+      const pdfModule = await import("pdf-parse");
+      const pdfParse = pdfModule.default || pdfModule;
+      const result = await (pdfParse as (buf: Buffer) => Promise<{ numpages: number; text: string }>)(data);
+      return formatSuccess({
+        filename,
+        mimeType: "application/pdf",
+        pages: result.numpages,
+        text: result.text,
+      });
+    }
+
+    // Plain text formats
+    const textTypes = ["text/plain", "text/csv", "text/html", "text/xml", "application/json", "application/xml"];
+    const textExtensions = [".txt", ".csv", ".html", ".htm", ".json", ".xml", ".md", ".log"];
+    const ext = path.extname(filename).toLowerCase();
+
+    if (textTypes.includes(mimeType) || textExtensions.includes(ext)) {
+      return formatSuccess({
+        filename,
+        mimeType: mimeType || "text/plain",
+        text: data.toString("utf-8"),
+      });
+    }
+
+    return formatSuccess({
+      filename,
+      mimeType,
+      error: `Cannot extract text from ${mimeType || ext} files. Use download_attachment to save the file to disk instead.`,
+    });
+  } catch (error) {
+    throw wrapGoogleError(error, "read_attachment_text");
+  }
+};
+
 // --- Label Operations ---
 
 export const createLabel: ToolHandler = async (ctx, args) => {

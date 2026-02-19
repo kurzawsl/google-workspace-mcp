@@ -215,6 +215,20 @@ function getGmailTools(): Tool[] {
         required: ["messageId", "attachmentId"],
       },
     },
+    {
+      name: "read_attachment_text",
+      description: "Downloads an email attachment and extracts its text content — returns the text directly without saving to disk. Supports PDF files (text extraction) and plain text files (.txt, .csv, .html, .json, .xml). Use read_email first to get the attachmentId and check the mimeType. For PDFs, extracts all text content from all pages. For non-text/non-PDF files, returns an error suggesting download_attachment instead.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          messageId: { type: "string", description: "The Gmail message ID containing the attachment" },
+          attachmentId: { type: "string", description: "The attachment ID (obtained from read_email's attachments list)" },
+          mimeType: { type: "string", description: "The MIME type of the attachment (obtained from read_email's attachments list, e.g., 'application/pdf', 'text/plain')" },
+          filename: { type: "string", description: "Original filename (for display purposes)" },
+        },
+        required: ["messageId", "attachmentId"],
+      },
+    },
   ];
 }
 
