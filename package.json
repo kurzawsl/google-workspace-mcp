@@ -8,7 +8,8 @@
     "build": "tsc",
     "start": "node build/index.js",
     "dev": "tsx src/index.ts",
-    "auth": "tsx src/auth-setup.ts"
+    "auth": "tsx src/auth-setup.ts",
+    "test": "echo 'no tests yet' && exit 0"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",

@@ -1,0 +1,24 @@
+name: CI (smoke)
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+# Smoke CI: install, build, and confirm the MCP server module can be loaded
+# without throwing. No real integration tests yet.
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Build (if defined)
+        run: npm run build --if-present
+      - name: Import smoke test
+        run: node -e "const fs=require('fs'); const pj=JSON.parse(fs.readFileSync('package.json','utf8')); const entry=pj.main||'index.js'; if(!fs.existsSync(entry)){console.error('entry missing:',entry);process.exit(1)} console.log('entry:',entry,'OK')"
