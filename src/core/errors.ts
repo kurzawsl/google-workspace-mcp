@@ -17,19 +17,31 @@ export function authError(message: string): McpError {
 }
 
 export function wrapGoogleError(error: unknown, operation: string): McpError {
+  // Log full error server-side (may contain URLs, tokens, internal details)
+  console.error(`[google-workspace] ${operation} error:`, error);
+
   const message = error instanceof Error ? error.message : String(error);
 
-  if (message.includes("invalid_client") || message.includes("invalid_grant")) {
-    return authError(`Authentication error during ${operation}: ${message}`);
+  if (
+    message.includes("invalid_client") ||
+    message.includes("invalid_grant") ||
+    message.includes("unauthorized") ||
+    message.includes("401")
+  ) {
+    return authError(`Authentication failed during ${operation}. Please re-run auth setup.`);
   }
 
-  if (message.includes("Rate Limit") || message.includes("rateLimitExceeded")) {
-    return internalError(`Rate limit hit during ${operation}. Please retry later.`);
+  if (message.includes("Rate Limit") || message.includes("rateLimitExceeded") || message.includes("429")) {
+    return internalError(`Quota exceeded during ${operation}. Please retry later.`);
   }
 
-  if (message.includes("notFound") || message.includes("Not Found")) {
-    return invalidParams(`Resource not found during ${operation}: ${message}`);
+  if (message.includes("notFound") || message.includes("Not Found") || message.includes("404")) {
+    return invalidParams(`Resource not found during ${operation}.`);
   }
 
-  return internalError(`${operation} failed: ${message}`);
+  if (message.includes("forbidden") || message.includes("403")) {
+    return authError(`Access denied during ${operation}. Check OAuth scopes.`);
+  }
+
+  return internalError(`${operation} failed. Check server logs for details.`);
 }

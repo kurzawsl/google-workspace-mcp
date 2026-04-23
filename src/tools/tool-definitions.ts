@@ -203,14 +203,14 @@ function getGmailTools(): Tool[] {
     },
     {
       name: "download_attachment",
-      description: "Downloads an email attachment to a local file. Use read_email first to get the attachmentId from the email's attachment metadata. Files are saved to the specified directory (defaults to system temp directory). Filenames are sanitized to prevent path traversal.",
+      description: "Downloads an email attachment to a local file. Use read_email first to get the attachmentId from the email's attachment metadata. Files are saved within ~/Downloads/gmail-attachments/ (the allowed root). The optional savePath must be an absolute path inside that root, or a relative path that resolves inside it — traversal attempts are rejected. Filenames are sanitized to prevent path traversal.",
       inputSchema: {
         type: "object",
         properties: {
           messageId: { type: "string", description: "The Gmail message ID containing the attachment" },
           attachmentId: { type: "string", description: "The attachment ID (obtained from read_email's attachments list)" },
           filename: { type: "string", description: "Filename to save as (optional — defaults to 'attachment_{id}')" },
-          savePath: { type: "string", description: "Directory to save the attachment to (optional — defaults to system temp directory)" },
+          savePath: { type: "string", description: "Directory to save the attachment to (optional — must be within ~/Downloads/gmail-attachments/). Absolute paths must be inside the allowed root; relative paths are resolved relative to it." },
         },
         required: ["messageId", "attachmentId"],
       },
