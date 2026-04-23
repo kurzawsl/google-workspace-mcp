@@ -1,5 +1,9 @@
 node_modules/
+dist/
 build/
+*.log
+.env
+.env.local
+.DS_Store
 config/credentials.json
 config/token.json
-.env
