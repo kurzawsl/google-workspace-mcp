@@ -9,7 +9,7 @@
     "start": "node build/index.js",
     "dev": "tsx src/index.ts",
     "auth": "tsx src/auth-setup.ts",
-    "test": "echo 'no tests yet' && exit 0"
+    "test": "npx tsx src/tests/attachment-path-validation.test.ts"
   },
   "keywords": [
     "mcp",

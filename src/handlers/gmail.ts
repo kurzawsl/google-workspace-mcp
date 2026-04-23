@@ -211,12 +211,56 @@ export const batchModifyEmails: ToolHandler = async (ctx, args) => {
   }
 };
 
+// Default root directory for attachment downloads.
+// Callers may only write within this directory (or a subdirectory they supply
+// that is itself contained within this root).
+const DEFAULT_ATTACHMENT_ROOT = path.join(os.homedir(), "Downloads", "gmail-attachments");
+
+/**
+ * Resolves and validates a caller-supplied savePath against an allowed root.
+ *
+ * Rules:
+ * - If savePath is omitted → use DEFAULT_ATTACHMENT_ROOT.
+ * - If savePath is absolute → it must be inside DEFAULT_ATTACHMENT_ROOT.
+ * - If savePath is relative → resolve it relative to DEFAULT_ATTACHMENT_ROOT
+ *   and verify the result still starts with that root.
+ *
+ * Throws McpError(InvalidParams) for any traversal attempt.
+ */
+function resolveAttachmentDir(savePath: string | undefined): string {
+  const root = DEFAULT_ATTACHMENT_ROOT;
+
+  if (!savePath) {
+    return root;
+  }
+
+  // Resolve: absolute paths are taken as-is, relative ones are anchored to root.
+  const candidate = path.isAbsolute(savePath)
+    ? path.resolve(savePath)
+    : path.resolve(root, savePath);
+
+  // The resolved path must start with root + sep to prevent e.g. /home/lukaszDownloads
+  // (a directory that shares the prefix but isn't inside root).
+  const rootWithSep = root.endsWith(path.sep) ? root : root + path.sep;
+  if (candidate !== root && !candidate.startsWith(rootWithSep)) {
+    throw invalidParams(
+      `savePath must be within the allowed downloads root (${root}). ` +
+        `Attempted path: ${candidate}`
+    );
+  }
+
+  return candidate;
+}
+
 export const downloadAttachment: ToolHandler = async (ctx, args) => {
   try {
     const messageId = args.messageId as string;
     const attachmentId = args.attachmentId as string;
-    const savePath = (args.savePath as string) || os.tmpdir();
-    // Sanitize filename to prevent path traversal
+
+    // Validate savePath — throws McpError on traversal
+    const resolvedDir = resolveAttachmentDir(args.savePath as string | undefined);
+
+    // Sanitize filename to prevent path traversal within the resolved directory
     const rawFilename = (args.filename as string) || `attachment_${attachmentId}`;
     const safeFilename = path.basename(rawFilename);
 
@@ -227,15 +271,10 @@ export const downloadAttachment: ToolHandler = async (ctx, args) => {
     });
 
     const data = Buffer.from(attachment.data.data!, "base64");
-    const filePath = path.join(savePath, safeFilename);
+    const filePath = path.join(resolvedDir, safeFilename);
 
-    // Verify resolved path stays within savePath
-    const resolvedPath = path.resolve(filePath);
-    const resolvedSavePath = path.resolve(savePath);
-    if (!resolvedPath.startsWith(resolvedSavePath)) {
-      throw invalidParams("Invalid filename: path traversal detected");
-    }
-
+    // Ensure parent directory exists before writing
+    await fs.mkdir(resolvedDir, { recursive: true });
     await fs.writeFile(filePath, data);
 
     return formatSuccess({
@@ -244,6 +283,9 @@ export const downloadAttachment: ToolHandler = async (ctx, args) => {
       size: data.length,
     });
   } catch (error) {
+    if (error instanceof Error && error.constructor.name === "McpError") {
+      throw error;
+    }
     throw wrapGoogleError(error, "download_attachment");
   }
 };
