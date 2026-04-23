@@ -1,7 +1,7 @@
 {
   "name": "google-workspace-mcp",
   "version": "1.0.0",
-  "description": "Unified MCP server for Gmail and Google Calendar",
+  "description": "MCP server exposing Gmail and Google Calendar to Claude via OAuth — read, send, and organize email; manage calendar events; extract attachment text",
   "type": "module",
   "main": "build/index.js",
   "scripts": {
@@ -11,6 +11,25 @@
     "auth": "tsx src/auth-setup.ts",
     "test": "echo 'no tests yet' && exit 0"
   },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "claude",
+    "claude-code",
+    "gmail",
+    "google-calendar",
+    "google-workspace"
+  ],
+  "author": "Lukasz Kurzawski (https://github.com/kurzawsl)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kurzawsl/google-workspace-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kurzawsl/google-workspace-mcp/issues"
+  },
+  "homepage": "https://github.com/kurzawsl/google-workspace-mcp#readme",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",
     "google-auth-library": "^9.0.0",
