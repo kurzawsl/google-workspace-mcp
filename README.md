@@ -1,5 +1,8 @@
 # google-workspace-mcp
 
+[![CI](https://github.com/kurzawsl/google-workspace-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/kurzawsl/google-workspace-mcp/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 MCP server that exposes Gmail and Google Calendar to Claude via OAuth. Lets Claude read, send, and organize email; manage calendar events; and extract text from email attachments — all through your own Google Cloud credentials.
 
 ## Prerequisites
@@ -28,7 +31,17 @@ npm run build
    ```bash
    npm run auth
    ```
-   A browser window will open. Grant the requested Gmail and Calendar scopes.
+   A browser window will open. You will be asked to grant the following OAuth scopes:
+
+   | Scope | Purpose |
+   |-------|---------|
+   | `gmail.readonly` | Read emails and labels |
+   | `gmail.send` | Send email |
+   | `gmail.modify` | Archive, label, and modify messages |
+   | `gmail.labels` | Create and manage labels |
+   | `gmail.settings.basic` | Read filter settings |
+   | `calendar` | Full read/write access to calendar events |
+
    The token is saved locally and auto-refreshed on expiry.
 
 ## Usage
@@ -81,6 +94,35 @@ Register in your Claude Code MCP config (`~/.claude.json`):
 | `delete_event` | Delete an event |
 | `find_free_time` | Find open time slots within a date range |
 | `check_conflicts` | Check whether a proposed time slot has conflicts |
+
+### Example: search unread emails
+
+Request:
+```json
+{
+  "tool": "search_emails",
+  "arguments": {
+    "query": "is:unread from:github.com",
+    "maxResults": 5
+  }
+}
+```
+
+Response:
+```json
+{
+  "messages": [
+    {
+      "id": "18f3a2b1c4d5e6f7",
+      "threadId": "18f3a2b1c4d5e6f7",
+      "subject": "[kurzawsl/claude-executor] PR #12 merged",
+      "from": "notifications@github.com",
+      "date": "2026-04-23T10:14:00Z",
+      "snippet": "docs: README polish — badges, install snippet, example output"
+    }
+  ]
+}
+```
 
 ## Development
 
